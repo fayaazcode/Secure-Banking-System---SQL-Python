@@ -1,0 +1,34 @@
+BANKING SYSTEM TABLE CREATIONS
+
+
+CREATE DATABASE BANKING;
+USE BANKING;
+
+CREATE TABLE USERS(
+user_id int primary key,
+user_name varchar(50) not null,
+phone_no int not null unique,
+email varchar(50) unique,
+passwd varchar(15) not null)
+
+CREATE TABLE ACCOUNTS(
+acc_no bigint primary key,
+user_id int references USERS(user_id),
+balance decimal(15,2) not null default 0.00,
+status varchar(25) default 'ACTIVE')
+
+CREATE TABLE TRANSACTIONS(
+t_id int primary key,
+acc_no bigint references ACCOUNTS(acc_no),
+reciever_acc bigint not null unique,
+trans_amt decimal(15,2) not null,
+trans_date date not null,
+trans_type char(1) not null)
+
+CREATE TABLE LOANS(
+loan_id bigint primary key,
+acc_no bigint references accounts(acc_no),
+loan_amt decimal(15,2) not null,
+loan_startdate date not null,
+loan_period smallint not null)
+trans_type char(1) not null)
