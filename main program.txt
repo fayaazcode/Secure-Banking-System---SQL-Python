@@ -1,0 +1,617 @@
+"""
+=====================================
+      Banking Management System
+=====================================
+Admin Default Credentials for Testing:
+Password- localadmin101
+"""
+
+try:
+    import bcrypt
+    import Banking_functions as bf
+    import time as t
+    admin_pass =b'$2b$12$s14uTn2XpjQOxxN2Aj7ByO6CjMZYyOhOLUYNYCkeYQGwQVH3RLb5e'
+
+
+#Start of program
+    print("=" * 40)
+    print("      Welcome to Banking Management")
+    print("=" * 40)
+    print()
+    t.sleep(1)
+
+    while True:
+        print("What is your role?")
+        print()
+        print("A. Admin")
+        print("B. Account holder")
+        print("C. New client")
+        print("E. Exit")
+        print()
+
+        role = input('Enter role (A/B/C/E): ')
+
+        # ADMIN PROGRAM
+        if role.upper() == 'A':
+            print()
+            print("Hello, Admin.")
+            print()
+
+            pwd = input('Enter password: ')
+            pwd_bytes = pwd.encode()
+
+            print()
+            t.sleep(1)
+            if bcrypt.checkpw(pwd_bytes, admin_pass):
+                print("Access granted.")
+                print()
+                t.sleep(0.5)
+                while True:
+                    print()
+                    print("What do you want to do?")
+                    t.sleep(0.5)
+
+                    print("1. Check user")
+                    print("2. Check account")
+                    print("3. Add user")
+                    print("4. Add account")
+                    print("5. Assist client")
+                    print("6. Deactivate account")
+                    print("7. Activate account")
+                    print("8. Extract transaction history")
+                    print("9. Exit")
+                    print()
+                    t.sleep(0.5)
+                    try:
+                        ch = int(input('Enter choice: '))
+                    except ValueError:
+                        print("Invalid input. Please enter a number.")
+                        continue
+                    t.sleep(0.5)
+                    print()
+                    if ch == 1:
+                        print("--- Check user ---")
+                        try:
+                            user_id = int(input('Enter user ID: '))
+                        except ValueError:
+                            print("Invalid input. Please enter a number.")
+                            continue
+                        ex = bf.check_userexist(user_id)
+                        if ex is None:
+                            print("User does not exist.")
+                        else:
+                            print("User exists.")
+                        t.sleep(0.5)
+                    elif ch == 2:
+                        print("--- Check account ---")
+                        try:
+                            account_id = int(input('Enter account ID: '))
+                        except ValueError:
+                            print("Invalid input. Please enter a number.")
+                            continue
+                        ex = bf.check_accexist(account_id)
+                        if ex is None:
+                            print("Account does not exist.")
+                        else:
+                            print("Account exists.")
+                        t.sleep(0.5)
+                    elif ch == 3:
+                        print("--- Add user ---")
+                        user_name = input('Enter user name: ')
+                        try:
+                            ph_no = int(input('Enter phone number: '))
+                        except ValueError:
+                            print("Invalid input. Please enter a number.")
+                            continue
+                        email = input('Enter email: ')
+                        password = input('Enter password: ')
+                        x=bf.mail_check(email)
+                        y=bf.phone_check(ph_no)
+                        if x:
+                            if y:
+                                user_id = bf.add_user(user_name, ph_no, email, password)
+                                t.sleep(0.5)
+                                print()
+                                print("User added.")
+                                print("--- Receipt ---")
+                                print("Your user ID:", user_id)
+                                print("-" *15)
+                            else:
+                                print("Phone number already in use.")
+                        else:
+                            print("Email ID already in use.")
+
+                    elif ch == 4:
+                        print("--- Add account ---")
+                        try:
+                            user_id = int(input('Enter user ID: '))
+                            bal = float(input('Enter opening balance: '))
+                        except ValueError:
+                            print("Invalid input. Please enter a valid number.")
+                            continue
+                        x = bf.check_userexist(user_id)
+                        if x is not None:
+                            acc_no = bf.add_acc(user_id, bal)
+                            print("Account added.")
+                            print()
+                            print("--- Receipt ---")
+                            print("Your account number:", acc_no)
+                        else:
+                            print("User does not exist.")
+                    elif ch == 5:
+                        t.sleep(0.5)
+                        print("What assistance is needed?")
+                        t.sleep(0.5)
+                        print()
+                        print("1. Transfer money")
+                        print("2. Deposit money")
+                        print("3. Withdraw money")
+                        print("4. Modify account")
+                        print("5. Check Balance")
+                        print("6. Exit")
+                        print()
+                        t.sleep(0.5)
+                        try:
+                            ch = int(input('Enter choice: '))
+                        except ValueError:
+                            print("Invalid input. Please enter a number.")
+                            continue
+                        if ch == 1:
+                            print("--- Transfer money ---")
+                            try:
+                                sender_id = int(input('Enter your account number: '))
+                                reciever_id = int(input('Enter receiver account number: '))
+                            except ValueError:
+                                print("Invalid input. Please enter a number.")
+                                continue
+                            check_sender = bf.check_accexist(sender_id)
+                            check_reciever = bf.check_accexist(reciever_id)
+                            if check_sender is not None and check_reciever is not None:
+                                bal = bf.check_balance(sender_id)
+                                try:
+                                    amt = float(input('Enter amount: '))
+                                except ValueError:
+                                    print("Invalid input. Please enter a valid amount.")
+                                    continue
+
+
+                                s = bf.check_active(sender_id)
+                                d = bf.check_active(reciever_id)
+
+                                if check_sender is not None and check_reciever is not None:
+                                    if s and d is True:
+                                        if bal >= amt:
+                                            bf.transfer_funds(sender_id, reciever_id, amt)
+                                            t.sleep(0.5)
+                                            print("Transfer successful.")
+
+                                        elif bal < amt:
+                                            t.sleep(0.5)
+                                            print("Insufficient funds.")
+                                    else:
+                                        if s is False:
+                                            print("Sender account not active")
+                                        elif d is False:
+                                            print("Receiver account not active")
+                            else:
+                                if check_sender is None:
+                                    print("Your account does not exist.")
+                                elif check_reciever is None:
+                                    print("Receiver account does not exist.")
+
+                        elif ch == 2:  # deposit function
+                            print("--- Deposit money ---")
+                            try:
+                                acc_no = int(input('Enter account number: '))
+                                amt = float(input('Enter deposit amount: '))
+                            except ValueError:
+                                print("Invalid input. Please enter a valid number.")
+                                continue
+                            bf.deposit(acc_no, amt)
+
+                        elif ch == 3:  # withdraw function
+                            print("--- Withdraw money ---")
+                            print()
+                            try:
+                                sender_id = int(input('Enter your account number: '))
+                            except ValueError:
+                                print("Invalid input. Please enter a number.")
+                                continue
+                            bal = bf.check_balance(sender_id)
+                            try:
+                                amt = float(input('Enter amount: '))
+                            except ValueError:
+                                print("Invalid input. Please enter a valid amount.")
+                                continue
+                            check_sender = bf.check_accexist(sender_id)
+                            if check_sender is not None:
+                                if bal >= amt:
+                                    bf.withdraw(sender_id, amt)
+                                    print("Withdrawal successful.")
+                                else:
+                                    print("Insufficient funds.")
+                            else:
+                                print("Your account does not exist.")
+                        elif ch == 4:
+                            print("--- Modify account ---")
+                            try:
+                                sender_id = int(input('Enter your user ID: '))
+                            except ValueError:
+                                print("Invalid input. Please enter a number.")
+                                continue
+                            bf.modify_account(sender_id)
+                        elif ch == 5:
+                            print("--- Check Balance ---")
+                            try:
+                                user_id = int(input('Enter user ID: '))
+                            except ValueError:
+                                print("Invalid input. Please enter a number.")
+                                continue
+                            accs = bf.acc_fetch(user_id)
+                            if len(accs) > 0:
+                                for x in range(len(accs)):
+                                    print(x + 1, '-', accs[x])
+                                try:
+                                    ch = int(input('Enter choice: '))
+                                    acc_no = accs[ch - 1]
+                                except ValueError:
+                                    print("Invalid input. Please enter a number.")
+                                    continue
+                                except IndexError:
+                                    print("Invalid choice.")
+                                    continue
+                                bal = bf.check_balance(acc_no)
+                                print('='*10)
+                                print("Balance:", bal)
+                                print('=' * 10)
+                            else:
+                                print("No accounts found.")
+
+                        elif ch == 6:
+                            break
+
+                        else:
+                            print("Invalid choice.")
+
+                    elif ch == 6:
+                        print("--- Deactivate account ---")
+                        try:
+                            acc_no = int(input('Enter account number: '))
+                        except ValueError:
+                            print("Invalid input. Please enter a number.")
+                            continue
+                        bal = bf.check_balance(acc_no)
+                        if bal == 0:
+                            bf.deactivate_account(acc_no)
+                        else:
+                            print("Account must have a zero balance.")
+                    elif ch == 7:
+                        print("--- Activate account ---")
+                        try:
+                            acc_no = int(input('Enter account number: '))
+                        except ValueError:
+                            print("Invalid input. Please enter a number.")
+                            continue
+                        bf.activate_acc(acc_no)
+                    elif ch == 8:
+                        print("--- Transaction history ---")
+                        bf.trans_hist()
+
+                    elif ch == 9:
+                        print("Thank you for using the program.")
+                        break
+
+                    else:
+                        print("Invalid choice.")
+
+            else:
+                print("Incorrect password.")
+
+        # ACCOUNT HOLDER PROGRAM
+        elif role.upper() == 'B':
+            user_name = input('Enter your name: ')
+            try:
+                user_id = int(input('Enter your user ID: '))
+            except ValueError:
+                print("Invalid input. Please enter a number.")
+                continue
+            pwd = input('Enter password: ')
+            attempt = pwd.encode('utf-8')
+            hashed_pwd = bf.check_pwd(user_id)
+            correct_pwd = hashed_pwd.encode('utf-8')
+            pwd_bytes = pwd.encode('utf-8')
+            if bcrypt.checkpw(attempt,correct_pwd ):
+                print("Password match!")
+                t.sleep(0.5)
+                print()
+                user_check = bf.check_userexist(user_id)
+                if user_check is not None:
+                        print("Access granted.")
+                        print()
+                        while True:
+                            t.sleep(0.5)
+                            print("What do you want to do?")
+                            print("1. Add account")
+                            print("2. Transfer money")
+                            print("3. Deposit money")
+                            print("4. Withdraw money")
+                            print("5. Modify account")
+                            print("6. Deactivate account")
+                            print("7. Activate account")
+                            print("8. Check active")
+                            print("9. Print transaction history")
+                            print("10. Check balance")
+                            print("11. Exit")
+                            print()
+                            t.sleep(0.5)
+                            try:
+                                ch = int(input('Enter choice: '))
+                            except ValueError:
+                                print("Invalid input. Please enter a number.")
+                                continue
+
+                            if ch == 1:
+                                try:
+                                    bal = float(input('Enter initial deposit: '))
+                                except ValueError:
+                                    print("Invalid input. Please enter a valid amount.")
+                                    continue
+                                if bal > 1000:
+                                    acc_no = bf.add_acc(user_id, bal)
+                                    print("Account creation successful.")
+                                    print()
+                                    print("--- Receipt ---")
+                                    print(f"Your account number is {acc_no}")
+                                    print('')
+
+                                else:
+                                    print("Initial deposit must be at least Rs. 1000.")
+                                    print()
+                            elif ch == 2:
+                                try:
+                                    amt = float(input('Enter transfer amount: '))
+                                    reciever_id = int(input('Enter receiver account number: '))
+                                except ValueError:
+                                    print("Invalid input. Please enter a valid number.")
+                                    continue
+                                print()
+                                t.sleep(0.5)
+                                accounts = bf.acc_fetch(user_id)
+
+                                if len(accounts) > 0:
+                                    print("Which account to transfer money from?")
+                                    for x in range(len(accounts)):
+                                        print(x + 1, '-', accounts[x])
+                                    try:
+                                        ch = int(input('Enter choice: '))
+                                        acc_no = accounts[ch-1]
+                                    except ValueError:
+                                        print("Invalid input. Please enter a number.")
+                                        continue
+                                    except IndexError:
+                                        print("Invalid choice.")
+                                        continue
+                                    bal = bf.check_balance(acc_no)
+
+                                    if bal >= amt:
+                                        bf.transfer_funds(acc_no, reciever_id, amt)
+                                        t.sleep(0.5)
+                                        print()
+                                    else:
+                                        print("Insufficient funds.")
+                                else:
+                                    print("No accounts found.")
+
+                            elif ch == 3:  # deposit function
+                                try:
+                                    amt = float(input('Enter deposit amount: '))
+                                except ValueError:
+                                    print("Invalid input. Please enter a valid amount.")
+                                    continue
+                                accounts = bf.acc_fetch(user_id)
+                                print('Which account to deposit money into?')
+                                if len(accounts) > 0:
+                                    for x in range(len(accounts)):
+                                        print(x + 1, '-', accounts[x])
+                                    try:
+                                        ch = int(input('Enter choice: '))
+                                        acc_no = accounts[ch-1]
+                                    except ValueError:
+                                        print("Invalid input. Please enter a number.")
+                                        continue
+                                    except IndexError:
+                                        print("Invalid choice.")
+                                        continue
+                                    bf.deposit(acc_no, amt)
+                                else:
+                                    print('No accounts found.')
+
+                            elif ch == 4:  # withdraw function
+                                try:
+                                    amt = float(input('Enter withdrawal amount: '))
+                                except ValueError:
+                                    print("Invalid input. Please enter a valid amount.")
+                                    continue
+                                accounts = bf.acc_fetch(user_id)
+                                if len(accounts) > 0:
+                                    print('Which account to withdraw money from?')
+                                    for x in range(len(accounts)):
+                                        print(x + 1, '-', accounts[x])
+                                    try:
+                                        ch = int(input('Enter choice: '))
+                                        acc_no = accounts[ch-1]
+                                    except ValueError:
+                                        print("Invalid input. Please enter a number.")
+                                        continue
+                                    except IndexError:
+                                        print("Invalid choice.")
+                                        continue
+                                    bal = bf.check_balance(acc_no)
+                                    if bal >= amt:
+                                        bf.withdraw(acc_no, amt)
+                                    else:
+                                        print("Insufficient funds.")
+                                else:
+                                    print("No accounts found.")
+                            elif ch == 5:
+                                bf.modify_account(user_id)
+                            elif ch == 6:
+                                accounts = bf.acc_fetch(user_id)
+                                if len(accounts) > 0:
+                                    print('Which account to deactivate: ')
+                                    for x in range(len(accounts)):
+                                        print(x + 1, '-', accounts[x])
+                                    try:
+                                        ch = int(input('Enter choice: '))
+                                        acc_no = accounts[ch-1]
+                                    except ValueError:
+                                        print("Invalid input. Please enter a number.")
+                                        continue
+                                    except IndexError:
+                                        print("Invalid choice.")
+                                        continue
+                                    bal = bf.check_balance(acc_no)
+                                    if bal == 0 :
+                                        bf.deactivate_account(acc_no)
+                                    else:
+                                        print("Account should have zero balance.")
+                            elif ch == 7:
+                                accounts = bf.acc_fetch(user_id)
+                                if len(accounts) > 0:
+                                    print('Which account to activate: ')
+                                    for x in range(len(accounts)):
+                                        print(x + 1, '-', accounts[x])
+                                    try:
+                                        ch = int(input('Enter choice: '))
+                                        acc_no = accounts[ch-1]
+                                    except ValueError:
+                                        print("Invalid input. Please enter a number.")
+                                        continue
+                                    except IndexError:
+                                        print("Invalid choice.")
+                                        continue
+                                    bf.activate_acc(acc_no)
+                            elif ch == 8:
+                                accounts = bf.acc_fetch(user_id)
+                                if len(accounts) > 0:
+                                    print('Which account to check status: ')
+                                    for x in range(len(accounts)):
+                                        print(x + 1, '-', accounts[x])
+                                    try:
+                                        ch = int(input('Enter choice: '))
+                                        acc_no = accounts[ch-1]
+                                    except ValueError:
+                                        print("Invalid input. Please enter a number.")
+                                        continue
+                                    except IndexError:
+                                        print("Invalid choice.")
+                                        continue
+                                    print('')
+                                    x=bf.check_active(acc_no)
+                                    if x:
+                                        print(f'Account {acc_no} is active.')
+                                    elif x is False:
+                                        print(f'Account {acc_no} is inactive.')
+                                    else:
+                                        print(f'Account {acc_no} does not exist.')
+                                else:
+                                    print('No accounts found.')
+
+
+                            elif ch == 9:
+                                accounts = bf.acc_fetch(user_id)
+                                if len(accounts) > 0:
+                                    print('Which account to print transaction history from: ')
+                                    for x in range(len(accounts)):
+                                        print(x + 1, '-', accounts[x])
+                                    try:
+                                        ch = int(input('Enter choice: '))
+                                        acc_no = accounts[ch - 1]
+                                    except ValueError:
+                                        print("Invalid input. Please enter a number.")
+                                        continue
+                                    except IndexError:
+                                        print("Invalid choice.")
+                                        continue
+                                    print('')
+                                    d1 = input('Enter start date: ')
+                                    d2 = input('Enter end date: ')
+                                    bf.tran_hist(d1,d2,acc_no)
+                                else:
+                                    print('No accounts found.')
+                            elif ch == 10:
+                                accounts = bf.acc_fetch(user_id)
+                                if len(accounts) > 0:
+                                    print('Which account to check balance: ')
+                                    for x in range(len(accounts)):
+                                        print(x + 1, '-', accounts[x])
+                                    try:
+                                        ch = int(input('Enter choice: '))
+                                        acc_no = accounts[ch - 1]
+                                    except ValueError:
+                                        print("Invalid input. Please enter a number.")
+                                        continue
+                                    except IndexError:
+                                        print("Invalid choice.")
+                                        continue
+                                    print('')
+                                    bal = bf.check_balance(acc_no)
+                                    print("="*10)
+                                    print(f'Balance: {bal}')
+                                    print('=' * 10)
+                            elif ch == 11:
+                                print("Thank you for using the program.")
+                                print()
+                                break
+                            else:
+                                print("Invalid choice.")
+                else:
+                    print("User does not exist.")
+                    print()
+            else:
+                print("Incorrect password.")
+
+        # NEW CLIENT PROGRAM
+        elif role.upper() == 'C':
+            user_name = input('Enter your name: ')
+            try:
+                ph_no = int(input('Enter your phone number: '))
+            except ValueError:
+                print("Invalid input. Please enter a number.")
+                continue
+            email = input('Enter your email: ')
+            passwd = input('Enter your password: ')
+            c_pwd = input('Confirm your password: ')
+            pwd_bytes = passwd.encode()
+            salt = bcrypt.gensalt()
+            pwd = bcrypt.hashpw(pwd_bytes, salt)
+            print('')
+            x=bf.mail_check(email)
+            y=bf.phone_check(ph_no)
+            if y:
+                if x:
+                    if passwd == c_pwd:
+                        user_id = bf.add_user(user_name, ph_no, email, pwd)
+                        print("User creation successful.")
+                        print('')
+                        print('--- RECEIPT ---')
+                        print(f'Your User ID: {user_id}')
+                    else:
+                        print("Passwords do not match, try again.")
+                        print('')
+                else:
+                    print("Email ID already in use.")
+                    print('')
+            else:
+                print("Phone Number already in use.")
+                print('')
+        elif role.upper() == 'E':
+            print("Thank you for using the program.")
+            print('')
+            break
+        else:
+            print("Invalid choice.")
+            print('')
+
+except Exception as e:
+    print(e)

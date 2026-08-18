@@ -1,0 +1,787 @@
+import mysql.connector as m
+from datetime import datetime as dt
+
+user='root'
+host='localhost'
+pwd=''
+
+
+#THIS FUNCTION CHECKS IF A USER EXISTS IN THE DATABASE
+def check_userexist(user_id):
+    con = m.connect(user=user, password=pwd, host=host, database='banking')
+    cur = con.cursor()
+    try:
+        sql="SELECT user_id FROM USERS WHERE user_id=%s;"
+        cur.execute(sql, (user_id,))
+        result = cur.fetchone()
+        if result is None:
+            return None
+        else:
+            return result
+    except Exception as e:
+        con.rollback()
+        print("Error:", e)
+        return None
+    finally:
+        cur.close()
+        con.close()
+
+#THIS FUNCTION CHECKS IF AN ACCOUNT EXISTS
+def check_accexist(acc_no):
+    con = m.connect(user=user, password=pwd, host=host, database='banking')
+    cur = con.cursor()
+    try:
+        sql = "SELECT acc_no FROM ACCOUNTS WHERE acc_no=%s;"
+        cur.execute(sql, (acc_no,))
+        result = cur.fetchone()
+        if result is None:
+            return None
+        else:
+            return result
+    except Exception as e:
+        con.rollback()
+        print("Error:", e)
+        return None
+    finally:
+        cur.close()
+        con.close()
+
+#THIS FUNCTION FINDS ACC_NO FROM USER_ID
+def acc_no_fetch(user_id):
+    con = m.connect(user=user, password=pwd, host=host, database='banking')
+    cur = con.cursor()
+    try:
+        sql = "SELECT acc_no FROM ACCOUNTS WHERE user_id=%s;"
+        cur.execute(sql, (user_id,))
+        result = cur.fetchone()
+        if result:
+            acc_no,=result
+        else:
+            acc_no = None
+        return acc_no
+    except Exception as e:
+        con.rollback()
+        print("Error:", e)
+        return None
+    finally:
+        cur.close()
+        con.close()
+
+#THIS FUNCTION FETCHES USER_ID FROM ACC_ID
+def user_id_fetch(acc_id):
+    con = m.connect(user=user, password=pwd, host=host, database='banking')
+    cur = con.cursor()
+    try:
+        sql = "SELECT user_id FROM ACCOUNTS WHERE acc_no=%s;"
+        cur.execute(sql, (acc_id,))
+        result = cur.fetchone()
+        if result:
+            user_id,=result
+        else:
+            user_id = None
+        return user_id
+    except Exception as e:
+        con.rollback()
+        print("Error:", e)
+        return None
+    finally:
+        cur.close()
+        con.close()
+
+
+#THIS FUNCTION ADDS A NEW USER
+def add_user(user_name,phone_no,email,password):
+    con = m.connect(user=user, password=pwd, host=host, database='banking')
+    cur = con.cursor()
+    try:
+        sql="INSERT INTO USERS (user_name, phone_no, email, passwd) VALUES(%s,%s,%s,%s);"
+        cur.execute(sql, (user_name, phone_no, email, password))
+        con.commit()
+
+        user_id = cur.lastrowid
+        return user_id
+    except Exception as e:
+        con.rollback()
+        print("Error:", e)
+        return None
+    finally:
+        cur.close()
+        con.close()
+
+#THIS FUNCTION ADDS A NEW ACCOUNT
+def add_acc(user_id, balance):
+    con = m.connect(user=user, password=pwd, host=host, database='banking')
+    cur = con.cursor()
+    try:
+        sql = "INSERT INTO ACCOUNTS(user_id,balance,status) VALUES(%s,%s,'A');"
+        cur.execute(sql, (user_id, balance))
+        con.commit()
+        acc_no = cur.lastrowid
+        return acc_no
+    except Exception as e:
+        con.rollback()
+        print("Error:", e)
+        return None
+    finally:
+        cur.close()
+        con.close()
+
+
+#THIS FUNCTION DOES THE TRANSFER OF MONEY FROM ONE ACCOUNT TO ANOTHER AND ADDS RECORDS TO TRANSACTION TABLE
+def transfer_funds(sender_id,reciever_id,amount):
+    con = m.connect(user=user, password=pwd, host=host, database='banking')
+    cur = con.cursor()
+    try:
+        sender = user_id_fetch(sender_id)
+        reciever = user_id_fetch(reciever_id)
+        s_active = check_active(sender_id)
+        r_active = check_active(reciever_id)
+        bal = check_balance(sender_id)
+        if amount > 0:
+            if bal >= amount :
+                if s_active is True and r_active is True:
+
+                    sql="UPDATE ACCOUNTS SET BALANCE = BALANCE - %s WHERE acc_no=%s;"
+                    sql1 = "UPDATE ACCOUNTS SET BALANCE = BALANCE + %s WHERE acc_no=%s;"
+                    cur.execute(sql, (amount, sender_id))
+                    cur.execute(sql1, (amount, reciever_id))
+                    sql2 = """
+                        INSERT INTO TRANSACTIONS (acc_no, receiver_acc, amount, trans_date, type)
+                        VALUES (%s, %s, %s, %s, %s);
+                    """
+                    cur.execute(sql2, (sender_id, reciever_id, amount, dt.now(), 't'))
+                    con.commit()
+                    t_id = cur.lastrowid
+
+                    sql3 = "SELECT user_name FROM users WHERE user_id=%s;"
+                    sql4 = "SELECT user_name FROM users WHERE user_id=%s;"
+                    cur.execute(sql3, (sender,))
+                    result = cur.fetchone()
+                    sql5 = "SELECT * FROM TRANSACTIONS WHERE t_id=%s;"
+                    cur.execute(sql5, (t_id,))
+                    transfer_details = cur.fetchone()
+                    (t_id,acc_no,type,amt,rec_acc,trans_date) = transfer_details
+
+                    if result:
+                        sender_name, = result
+                    else:
+                        sender_name = None
+                    cur.execute(sql4, (reciever,))
+                    result = cur.fetchone()
+                    if result:
+                        reciever_name, = result
+                    else:
+                        reciever_name = None
+
+                    if sender_name is not None and reciever_name is not None:
+                        print("{} was successfully transferred from {} to {}.".format(amount, sender_name, reciever_name))
+                        print('')
+                        print('')
+                        print('=' *40)
+                        print('          Transaction Receipt' + '' * 10)
+                        print('=' *40)
+                        print(f'Transfer ID - {t_id}')
+                        print(f'From Account - {acc_no}')
+                        print(f'To Account - {rec_acc}')
+                        print(f'Amount - {amt}')
+                        print(f'Transfer Date - {trans_date}')
+                        print('Transaction Type - Transfer')
+                        print('=' *40)
+                        print('')
+                else:
+                    if s_active is False:
+
+                        print("Sender account is not active.")
+                    else:
+                        print("Receiver account is not active.")
+            else:
+                print("Insufficient funds.")
+        else:
+            print("Amount has to be greater than 0.")
+
+
+    except Exception as e:
+        con.rollback()
+        print("Error:", e)
+    finally:
+        cur.close()
+        con.close()
+
+
+#THIS FUNCTION CHECKS BALANCE
+def check_balance(acc_no):
+    con = m.connect(user=user, password=pwd, host=host, database='banking')
+    cur = con.cursor()
+    try:
+        sql="SELECT balance FROM ACCOUNTS WHERE acc_no=%s;"
+        cur.execute(sql, (acc_no,))
+        result = cur.fetchone()
+        bal=[]
+        for x in result:
+            bal.append(x)
+        return bal[0]
+    except Exception as e:
+        con.rollback()
+        print("Error:", e)
+        return None
+    finally:
+        cur.close()
+        con.close()
+
+#THIS FUNCTION CHECKS IF THE ENTERED PASSWORD IS RIGHT
+def check_pwd(user_id):
+    con = m.connect(user=user, password=pwd, host=host, database='banking')
+    cur = con.cursor()
+    try:
+        sql= "SELECT passwd FROM USERS WHERE user_id=%s;"
+        cur.execute(sql, (user_id,))
+        result = cur.fetchone()
+        if result:
+            passwd, = result
+            return passwd
+        else:
+            return None
+
+    except Exception as e:
+        con.rollback()
+        print("Error:", e)
+        return False
+    finally:
+        cur.close()
+        con.close()
+
+#THIS FETCHES ALL ACCOUNTS OF A USER
+def acc_fetch(user_id):
+    con = m.connect(user=user, password=pwd, host=host, database='banking')
+    cur = con.cursor()
+    try:
+        sql = "SELECT acc_no FROM ACCOUNTS WHERE user_id=%s;"
+        cur.execute(sql, (user_id,))
+        result = cur.fetchall()
+        accs = []
+        if result is not None:
+            for x in result:
+                y,=x
+                accs.append(y)
+            return accs
+        else:
+            return None
+    except Exception as e:
+        con.rollback()
+        print("Error:", e)
+        return []
+    finally:
+        cur.close()
+        con.close()
+
+
+#THIS FUNCTION DEPOSITS MONEY INTO A USERS ACCOUNT
+def deposit(acc_no, amount):
+    con = m.connect(user=user, password=pwd, host=host, database='banking')
+    cur = con.cursor()
+    x=check_active(acc_no)
+    if x:
+        try:
+            if amount > 0:
+                cur.execute("UPDATE ACCOUNTS SET balance = balance + %s WHERE acc_no = %s", (amount, acc_no))
+
+                cur.execute("""
+                    INSERT INTO TRANSACTIONS (acc_no, receiver_acc, amount, trans_date, type)
+                    VALUES (%s, %s, %s, %s, %s)
+                """, (acc_no, acc_no, amount, dt.today(), 'd'))
+
+                con.commit()
+                t_id = cur.lastrowid
+                sql = "SELECT * FROM TRANSACTIONS WHERE t_id=%s;"
+                cur.execute(sql, (t_id,))
+                result = cur.fetchone()
+                (t_id, acc_no, type, amt, rec_acc, trans_date) = result
+
+                print(f"Deposited {amount} into account {acc_no} ")
+                print('')
+                print('')
+                print('=' * 40)
+                print('          Transaction Receipt' + '' * 10)
+                print('=' * 40)
+                print(f'Transfer ID - {t_id}')
+                print(f'From Account - {acc_no}')
+                print(f'To Account - {rec_acc}')
+                print(f'Amount - {amt}')
+                print(f'Transfer Date - {trans_date}')
+                print('Transaction Type - Deposit')
+                print('=' * 40)
+                print('')
+            else:
+                print("Amount cannot be negative or zero.")
+
+        except Exception as e:
+            con.rollback()
+            print("Error:", e)
+        finally:
+            cur.close()
+            con.close()
+    elif x is None:
+        print("Account does not exist.")
+        cur.close()
+        con.close()
+    else:
+        print("Account is not active.")
+        cur.close()
+        con.close()
+
+# Withdrawal function
+def withdraw(acc_no, amount):
+    con = m.connect(user=user, password=pwd, host=host, database='banking')
+    cur = con.cursor()
+    try:
+        x = check_active(acc_no)
+        if x:
+            try:
+                cur.execute("SELECT balance FROM ACCOUNTS WHERE acc_no = %s", (acc_no,))
+                balance = cur.fetchone()
+                if amount>0:
+
+                    if balance[0] >= amount:
+                        cur.execute("UPDATE ACCOUNTS SET balance = balance - %s WHERE acc_no = %s", (amount, acc_no))
+                        cur.execute("""
+                            INSERT INTO TRANSACTIONS (acc_no, receiver_acc, amount, trans_date, type)
+                            VALUES (%s, %s, %s, %s, %s)
+                        """, (acc_no, acc_no, amount, dt.today(), 'w'))
+                        con.commit()
+                        t_id = cur.lastrowid
+                        sql = "SELECT * FROM TRANSACTIONS WHERE t_id=%s;"
+                        cur.execute(sql, (t_id,))
+                        result = cur.fetchone()
+                        (t_id, acc_no, type, amt, rec_acc, trans_date) = result
+
+                        print(f"Withdrawn {amount} from account {acc_no}")
+                        print('')
+                        print('')
+                        print('=' * 40)
+                        print('          Transaction Receipt' + '' * 10)
+                        print('=' * 40)
+                        print(f'Transfer ID - {t_id}')
+                        print(f'From Account - {acc_no}')
+                        print(f'To Account - {rec_acc}')
+                        print(f'Amount - {amt}')
+                        print(f'Transfer Date - {trans_date}')
+                        print('Transaction Type - Withdraw')
+                        print('=' * 40)
+                        print('')
+                    else:
+                        print("Insufficient balance")
+                else:
+                    print("Amount cannot be negative or zero.")
+            except Exception as e:
+                con.rollback()
+                print("Error:", e)
+        elif x is None:
+            print("Account does not exist.")
+        else:
+            print("Account is not active.")
+    finally:
+        cur.close()
+        con.close()
+
+
+# Modify account details
+def modify_account(user_no):
+    con = m.connect(user=user, password=pwd, host=host, database='banking')
+    cur = con.cursor()
+    try:
+        choice = input('''Do you want to change:
+        a. Password
+        b. Email ID
+        c. Phone number
+        Enter choice: ''')
+        print('')
+
+        if choice.lower() == "a":
+            old = input("Enter your old password: ")
+            cur.execute("SELECT passwd FROM USERS WHERE user_id = %s", (user_no,))
+            passwd = cur.fetchone()
+
+            if passwd and old == passwd[0]:
+                newpass = input("Enter your new password: ")
+                confirm = input("Confirm your new password: ")
+                print('')
+                if newpass == confirm:
+                    cur.execute("UPDATE USERS SET passwd = %s WHERE user_id = %s", (newpass, user_no))
+                    con.commit()
+                    print(f"Password updated successfully for account {user_no}")
+                    print('')
+                else:
+                    print("Passwords do not match")
+                    print('')
+            else:
+                print(" Wrong old password")
+                print('')
+
+        elif choice.lower() == "b":
+            new_email = input("Enter your new email: ")
+            cur.execute("UPDATE USERS SET email = %s WHERE user_id = %s", (new_email, user_no))
+            con.commit()
+            print(f" Email updated successfully for account {user_no}")
+
+        elif choice.lower() == "c":
+            new_phone = input("Enter your new phone number: ")
+            cur.execute("UPDATE USERS SET phone_no = %s WHERE user_id = %s", (new_phone, user_no))
+            con.commit()
+            print(f" Phone number updated successfully for account {user_no}")
+
+        else:
+            print(" Invalid choice")
+
+    except Exception as e:
+        con.rollback()
+        print("Error:", e)
+    finally:
+        cur.close()
+        con.close()
+
+def deactivate_account(acc_no):
+    con = m.connect(user=user, password=pwd, host=host, database='banking')
+    cur = con.cursor()
+    x = check_active(acc_no)
+    if x:
+        try:
+            sql = "UPDATE ACCOUNTS SET status = 'D' WHERE acc_no = %s"
+            cur.execute(sql, (acc_no,))
+            con.commit()
+            print(f"Account {acc_no} has been deactivated")
+        except Exception as e:
+            con.rollback()
+            print("Error:", e)
+        finally:
+            cur.close()
+            con.close()
+    elif x is None:
+        print("Account does not exist.")
+        cur.close()
+        con.close()
+    else:
+        print("Account is already deactive.")
+        cur.close()
+        con.close()
+
+
+def check_active(acc_no):
+    con = m.connect(user=user, password=pwd, host=host, database='banking')
+    cur = con.cursor()
+    try:
+        sql = "SELECT status FROM ACCOUNTS WHERE acc_no = %s"
+        cur.execute(sql, (acc_no,))
+        st = cur.fetchone()
+        x=check_accexist(acc_no)
+
+        if x is not None:
+            status, = st
+            if status.lower() == "d":
+                return False
+            else:
+                return True
+        else:
+            print("Account does not exist")
+    except Exception as e:
+        con.rollback()
+        print("Error:", e)
+    finally:
+        cur.close()
+        con.close()
+
+def activate_acc(acc_no):
+    con = m.connect(user=user, password=pwd, host=host, database='banking')
+    cur = con.cursor()
+    x = check_active(acc_no)
+    if x is False:
+        try:
+            sql = "UPDATE ACCOUNTS SET status = 'A' WHERE acc_no = %s"
+            cur.execute(sql, (acc_no,))
+            con.commit()
+            print(f"Account {acc_no} has been activated")
+        except Exception as e:
+            con.rollback()
+            print("Error:", e)
+        finally:
+            cur.close()
+            con.close()
+    elif x is None:
+        print("Account does not exist.")
+        cur.close()
+        con.close()
+    else:
+        print("Account is already active.")
+        cur.close()
+        con.close()
+
+def mail_check(mail):
+    con = m.connect(user=user, password=pwd, host=host, database='banking')
+    cur = con.cursor()
+    try:
+        sql = "SELECT email FROM USERS;"
+        cur.execute(sql)
+        result = cur.fetchall()
+        email=[]
+        for x in result:
+            y, = x
+            email.append(y)
+        if mail in email:
+            return False
+        else:
+            return True
+    except Exception as e:
+        con.rollback()
+        print("Error:", e)
+    finally:
+        cur.close()
+        con.close()
+
+def phone_check(no):
+    con = m.connect(user=user, password=pwd, host=host, database='banking')
+    cur = con.cursor()
+    try:
+        sql = "SELECT phone_no FROM USERS;"
+        cur.execute(sql)
+        result = cur.fetchall()
+        phone_no=[]
+        for x in result:
+            y, = x
+            phone_no.append(y)
+        if no in phone_no:
+            return False
+        else:
+            return True
+    except Exception as e:
+        con.rollback()
+        print("Error:", e)
+    finally:
+        cur.close()
+        con.close()
+
+def tran_hist(date1, date2,acc_no):
+    con = m.connect(user=user, password=pwd, host=host, database='banking')
+    cur = con.cursor()
+    try:
+
+        sql = "SELECT * FROM TRANSACTIONS WHERE trans_date >= %s and trans_date <= %s and (acc_no = %s or receiver_acc = %s);"
+        cur.execute(sql, (date1, date2, acc_no, acc_no))
+        result = cur.fetchall()
+        print("="*150)
+        print("                                                       Transaction History")
+        print("="*150)
+        if result is not None:
+            for x in result:
+                (t_id, acc_no, type, amt, rec_acc, trans_date) = x
+                print(f"Transaction ID: {t_id}   From Account: {acc_no}  To Account: {rec_acc}  Amount: {amt}   Transaction date: {trans_date}   Transaction type: {type}")
+            print("="*150)
+        else:
+            print("No Transaction History.")
+    except Exception as e:
+        con.rollback()
+        print("Error:", e)
+    finally:
+        cur.close()
+        con.close()
+
+
+def trans_hist():
+    con = m.connect(user=user, password=pwd, host=host, database='banking')
+    cur = con.cursor()
+    try:
+        d1 = input('Enter start date (YYYY-MM-DD): ')
+        d2 = input('Enter end date (YYYY-MM-DD): ')
+        print('')
+        print('--- Search Filters ---')
+        print('1. From Account Number')
+        print('2. To Account Number')
+        print('3. Transfer Type')
+        print('4. Transfer Amount')
+        print('5. None')
+        ch = int(input('Enter filter: '))
+        print('')
+
+        if ch == 1:
+            acc_no = input('Enter Sender Account Number: ')
+            sql = "SELECT * FROM TRANSACTIONS WHERE trans_date >= %s and trans_date <= %s and acc_no = %s;"
+            cur.execute(sql, (d1, d2, acc_no))
+            result = cur.fetchall()
+            print("=" * 150)
+            print("                                                       Transaction History")
+            print("=" * 150)
+            if result is not None:
+                for x in result:
+                    (t_id, acc_no, type, amt, rec_acc, trans_date) = x
+                    print(
+                        f"Transaction ID: {t_id}   From Account: {acc_no}  To Account: {rec_acc}:  Amount: {amt}   Transaction date: {trans_date}   Transaction type: {type}")
+                print("=" * 150)
+            else:
+                print("No Transaction History.")
+        elif ch == 2:
+            acc_no = input('Enter Receiver Account Number: ')
+            sql = "SELECT * FROM TRANSACTIONS WHERE trans_date >= %s and trans_date <= %s and reciever_acc = %s;"
+            cur.execute(sql, (d1, d2, acc_no))
+            result = cur.fetchall()
+            print("=" * 150)
+            print("                                                       Transaction History")
+            print("=" * 150)
+            if result is not None:
+
+                for x in result:
+                    (t_id, acc_no, type, amt, rec_acc, trans_date) = x
+                    print(
+                        f"Transaction ID: {t_id}   From Account: {acc_no}  To Account: {rec_acc}:  Amount: {amt}   Transaction date: {trans_date}   Transaction type: {type}")
+                print("=" * 150)
+            else:
+                print("No Transaction History.")
+
+        elif ch == 3:
+            type = input('Enter Transaction Type(t/d/w): ').lower()
+            if type == 't' or type == 'd' or type == 'w':
+                sql = "SELECT * FROM TRANSACTIONS WHERE trans_date >= %s and trans_date <= %s and type = %s;"
+                cur.execute(sql, (d1, d2, type))
+                result = cur.fetchall()
+                print("=" * 150)
+                print("                                                       Transaction History")
+                print("=" * 150)
+                if result is not None:
+                    for x in result:
+                        (t_id, acc_no, type, amt, rec_acc, trans_date) = x
+                        print(f"Transaction ID: {t_id}   From Account: {acc_no}  To Account: {rec_acc}:  Amount: {amt}   Transaction date: {trans_date}   Transaction type: {type}")
+                    print("=" * 100)
+                else:
+                    print("No Transaction History.")
+            else:
+                print("Invalid Transaction Type")
+                print('')
+
+        elif ch == 4:
+            print('--- Sort Type ---')
+            print('1. Greater than')
+            print('2. Lesser than')
+            print('3. Equal to')
+            print('4. Greater than or equal to')
+            print('5. Lesser than or equal to')
+            print('6. Greater than, lesser than')
+
+            choice = int(input('Enter sort type: '))
+            print('')
+
+            # amt = float(input('Enter Amount: '))
+            if choice == 1:
+                amt = float(input('Enter Amount: '))
+                sql = "SELECT * FROM TRANSACTIONS WHERE trans_date >= %s and trans_date <= %s and amount > %s;"
+                cur.execute(sql, (d1, d2, amt))
+                result = cur.fetchall()
+                print("=" * 150)
+                print("                                                       Transaction History")
+                print("=" * 150)
+                if result is not None:
+                    for x in result:
+                        (t_id, acc_no, type, amt, rec_acc, trans_date) = x
+                        print(
+                            f"Transaction ID: {t_id}   From Account: {acc_no}  To Account: {rec_acc}:  Amount: {amt}   Transaction date: {trans_date}   Transaction type: {type}")
+                    print("=" * 150)
+                else:
+                    print("No Transaction History.")
+            elif choice == 2:
+                amt = float(input('Enter Amount: '))
+                sql = "SELECT * FROM TRANSACTIONS WHERE trans_date >= %s and trans_date <= %s and amount < %s;"
+                cur.execute(sql, (d1, d2, amt))
+                result = cur.fetchall()
+                print("=" * 150)
+                print("                                                       Transaction History")
+                print("=" * 150)
+                if result is not None:
+                    for x in result:
+                        (t_id, acc_no, type, amt, rec_acc, trans_date) = x
+                        print(f"Transaction ID: {t_id}   From Account: {acc_no}  To Account: {rec_acc}:  Amount: {amt}   Transaction date: {trans_date}   Transaction type: {type}")
+                    print("=" * 150)
+                else:
+                    print("No Transaction History.")
+
+            elif choice == 3:
+                amt = float(input('Enter Amount: '))
+                sql = "SELECT * FROM TRANSACTIONS WHERE trans_date >= %s and trans_date <= %s and amount = %s;"
+                cur.execute(sql, (d1, d2, amt))
+                result = cur.fetchall()
+                print("=" * 150)
+                print("                                                       Transaction History")
+                print("=" * 150)
+                if result is not None:
+                    for x in result:
+                        (t_id, acc_no, type, amt, rec_acc, trans_date) = x
+                        print(f"Transaction ID: {t_id}   From Account: {acc_no}  To Account: {rec_acc}:  Amount: {amt}   Transaction date: {trans_date}   Transaction type: {type}")
+                    print("=" * 150)
+                else:
+                    print("No Transaction History.")
+            elif choice == 4:
+                amt = float(input('Enter Amount: '))
+                sql = "SELECT * FROM TRANSACTIONS WHERE trans_date >= %s and trans_date <= %s and amount >= %s;"
+                cur.execute(sql, (d1, d2, amt))
+                result = cur.fetchall()
+                print("=" * 150)
+                print("                                                       Transaction History")
+                print("=" * 150)
+                for x in result:
+                    (t_id, acc_no, type, amt, rec_acc, trans_date) = x
+                    print(f"Transaction ID: {t_id}   From Account: {acc_no}  To Account: {rec_acc}:  Amount: {amt}   Transaction date: {trans_date}   Transaction type: {type}")
+                print("=" * 150)
+            elif choice == 5:
+                amt = float(input('Enter Amount: '))
+                sql = "SELECT * FROM TRANSACTIONS WHERE trans_date >= %s and trans_date <= %s and amount <= %s;"
+                cur.execute(sql, (d1, d2, amt))
+                result = cur.fetchall()
+                print("=" * 150)
+                print("                                                       Transaction History")
+                print("=" * 150)
+                if result is not None:
+                    for x in result:
+                        (t_id, acc_no, type, amt, rec_acc, trans_date) = x
+                        print(f"Transaction ID: {t_id}   From Account: {acc_no}  To Account: {rec_acc}:  Amount: {amt}   Transaction date: {trans_date}   Transaction type: {type}")
+                    print("=" * 150)
+                else:
+                    print("No Transaction History.")
+            elif choice == 6:
+                amt = float(input('Enter Start Amount: '))
+                e_amt = float(input('Enter End Amount: '))
+                sql = "SELECT * FROM TRANSACTIONS WHERE trans_date >= %s and trans_date <= %s and amount >= %s and amount <= %s;"
+                cur.execute(sql, (d1, d2, amt, e_amt))
+                result = cur.fetchall()
+                print("=" * 150)
+                print("                                                       Transaction History")
+                print("=" * 150)
+                if result is not None:
+                    for x in result:
+                        (t_id, acc_no, type, amt, rec_acc, trans_date) = x
+                        print(
+                            f"Transaction ID: {t_id}   From Account: {acc_no}  To Account: {rec_acc}:  Amount: {amt}   Transaction date: {trans_date}   Transaction type: {type}")
+                    print("=" * 150)
+                else:
+                    print('No Transaction History.')
+
+        elif ch == 5:
+            sql = "SELECT * FROM TRANSACTIONS WHERE trans_date >= %s and trans_date <= %s;"
+            cur.execute(sql, (d1, d2))
+            result = cur.fetchall()
+            print("=" * 150)
+            print("                                                       Transaction History")
+            print("=" * 150)
+            if result is not None:
+
+                for x in result:
+                    (t_id, acc_no, type, amt, rec_acc, trans_date) = x
+                    print(f"Transaction ID: {t_id}   From Account: {acc_no}  To Account: {rec_acc}:  Amount: {amt}   Transaction date: {trans_date}   Transaction type: {type}")
+                print("=" * 150)
+            else:
+                print('No Transaction History.')
+
+        else:
+            print('Invalid choice')
+
+    except Exception as e:
+        con.rollback()
+        print("Error:", e)
+
+    finally:
+        cur.close()
+        con.close()
