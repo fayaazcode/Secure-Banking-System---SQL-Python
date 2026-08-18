@@ -2,8 +2,7 @@
 =====================================
       Banking Management System
 =====================================
-Admin Default Credentials for Testing:
-Password- localadmin101
+Admin Password for Testing- localadmin101
 """
 
 try:
@@ -13,7 +12,7 @@ try:
     admin_pass =b'$2b$12$s14uTn2XpjQOxxN2Aj7ByO6CjMZYyOhOLUYNYCkeYQGwQVH3RLb5e'
 
 
-#Start of program
+#Start of Program
     print("=" * 40)
     print("      Welcome to Banking Management")
     print("=" * 40)
@@ -105,21 +104,29 @@ try:
                             continue
                         email = input('Enter email: ')
                         password = input('Enter password: ')
+                        pwd_bytes = password.encode()
+                        salt = bcrypt.gensalt()
+                        hashed_pwd = bcrypt.hashpw(pwd_bytes, salt)
                         x=bf.mail_check(email)
                         y=bf.phone_check(ph_no)
-                        if x:
-                            if y:
-                                user_id = bf.add_user(user_name, ph_no, email, password)
-                                t.sleep(0.5)
-                                print()
-                                print("User added.")
-                                print("--- Receipt ---")
-                                print("Your user ID:", user_id)
-                                print("-" *15)
+                        c_pwd =input('Confirm password: ')
+                        if c_pwd == password:
+                            if x:
+                                if y:
+                                    user_id = bf.add_user(user_name, ph_no, email, hashed_pwd)
+                                    t.sleep(0.5)
+                                    print()
+                                    print("User added.")
+                                    print("--- Receipt ---")
+                                    print("Your user ID:", user_id)
+                                    print("-" *15)
+                                else:
+                                    print("Phone number already in use.")
                             else:
-                                print("Phone number already in use.")
+                                print("Email ID already in use.")
                         else:
-                            print("Email ID already in use.")
+                            print("Passwords do not match.")
+                            t.sleep(0.5)
 
                     elif ch == 4:
                         print("--- Add account ---")
