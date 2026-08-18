@@ -228,7 +228,7 @@ def check_balance(acc_no):
         cur.close()
         con.close()
 
-#THIS FUNCTION CHECKS IF THE ENTERED PASSWORD IS RIGHT
+#THIS FUNCTION RETURNS THE HASHED PASSWORD OF A USER
 def check_pwd(user_id):
     con = m.connect(user=user, password=pwd, host=host, database='banking')
     cur = con.cursor()
