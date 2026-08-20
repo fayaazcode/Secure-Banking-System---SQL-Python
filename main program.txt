@@ -10,7 +10,8 @@ try:
     import Banking_functions as bf
     import time as t
     admin_pass =b'$2b$12$s14uTn2XpjQOxxN2Aj7ByO6CjMZYyOhOLUYNYCkeYQGwQVH3RLb5e'
-
+# admin_pass can be changed by a few small hashing lines of code
+# refer lines 592-595 for hashing pwds
 
 #Start of Program
     print("=" * 40)
